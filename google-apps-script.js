@@ -16,9 +16,15 @@
  * 10. Copy the Web App URL
  *
  * Your Google Sheet must have three sheets (tabs):
- * - "Attendees" with headers: id, name, email, department, position, phone, createdAt
- * - "Records" with headers: id, attendeeId, attendeeName, attendeePosition, attendeeDepartment, timestamp, type
- * - "AdminPins" with headers: pin, label, active
+ * 
+ * - "Attendees" with headers (12 columns):
+ *   id, firstName, middleName, lastName, name, address, department, position, gender, email, phone, createdAt
+ *
+ * - "Records" with headers (7 columns):
+ *   id, attendeeId, attendeeName, attendeePosition, attendeeDepartment, timestamp, type
+ *
+ * - "AdminPins" with headers:
+ *   pin, label, active
  *   Example row: 1234 | Main Admin | TRUE
  *   Tip: format the pin column as Plain text to preserve leading zeros.
  */
@@ -160,14 +166,20 @@ function doPost(e) {
     if (action === 'addAttendee') {
       const sheet = getSheet('Attendees');
       const attendee = data.attendee;
+      // 12 columns: id, firstName, middleName, lastName, name, address, department, position, gender, email, phone, createdAt
       sheet.appendRow([
         attendee.id,
-        attendee.name,
-        attendee.email,
-        attendee.department,
-        attendee.position,
+        attendee.firstName || '',
+        attendee.middleName || '',
+        attendee.lastName || '',
+        attendee.name || '',
+        attendee.address || '',
+        attendee.department || '',
+        attendee.position || '',
+        attendee.gender || '',
+        attendee.email || '',
         attendee.phone || '',
-        attendee.createdAt,
+        attendee.createdAt || '',
       ]);
       result.attendee = attendee;
     }
@@ -178,14 +190,19 @@ function doPost(e) {
       const rowIndex = findRowById(sheet, attendee.id);
 
       if (rowIndex > 0) {
-        sheet.getRange(rowIndex, 1, 1, 7).setValues([[
+        sheet.getRange(rowIndex, 1, 1, 12).setValues([[
           attendee.id,
-          attendee.name,
-          attendee.email,
-          attendee.department,
-          attendee.position,
+          attendee.firstName || '',
+          attendee.middleName || '',
+          attendee.lastName || '',
+          attendee.name || '',
+          attendee.address || '',
+          attendee.department || '',
+          attendee.position || '',
+          attendee.gender || '',
+          attendee.email || '',
           attendee.phone || '',
-          attendee.createdAt,
+          attendee.createdAt || '',
         ]]);
         result.attendee = attendee;
       } else {

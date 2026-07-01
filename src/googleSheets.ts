@@ -49,14 +49,40 @@ export async function postToSheet(action: string, payload: Record<string, unknow
 
 export async function addAttendeeToSheet(attendee: {
   id: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
   name: string;
-  email: string;
+  address: string;
   department: string;
   position: string;
+  gender: string;
+  email: string;
   phone?: string;
   createdAt: string;
 }): Promise<{ success: boolean; error?: string }> {
   return postToSheet('addAttendee', { attendee });
+}
+
+export async function updateAttendeeInSheet(attendee: {
+  id: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  name: string;
+  address: string;
+  department: string;
+  position: string;
+  gender: string;
+  email: string;
+  phone?: string;
+  createdAt: string;
+}): Promise<{ success: boolean; error?: string }> {
+  return postToSheet('updateAttendee', { attendee });
+}
+
+export async function deleteAttendeeFromSheet(id: string): Promise<{ success: boolean; error?: string }> {
+  return postToSheet('deleteAttendee', { id });
 }
 
 export async function addRecordToSheet(record: {
@@ -77,4 +103,18 @@ export async function deleteRecordFromSheet(id: string): Promise<{ success: bool
 
 export async function clearRecordsFromSheet(): Promise<{ success: boolean; error?: string }> {
   return postToSheet('clearRecords', {});
+}
+
+export async function getActivePins(): Promise<{ success: boolean; pins?: string[]; error?: string }> {
+  if (!isGoogleSheetsConfigured()) {
+    return { success: false, error: 'Google Sheets not configured' };
+  }
+
+  try {
+    const response = await fetch(`${GOOGLE_SHEETS_URL}?action=getPins`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
 }
