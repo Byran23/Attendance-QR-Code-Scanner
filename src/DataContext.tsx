@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { Attendee, AttendanceRecord, User } from './types';
-import { isGoogleSheetsConfigured, addAttendeeToSheet, addRecordToSheet, deleteRecordFromSheet, clearRecordsFromSheet } from './googleSheets';
+import { isGoogleSheetsConfigured, addAttendeeToSheet, addRecordToSheet, deleteRecordFromSheet, clearRecordsFromSheet, getActivePins } from './googleSheets';
 
 interface DataContextType {
   user: User | null;
-  login: (username: string, password: string) => boolean;
+  login: (pin: string) => boolean;
   logout: () => void;
+  loadingPins: boolean;
+  pinsError: boolean;
   attendees: Attendee[];
   records: AttendanceRecord[];
   synced: boolean;
@@ -26,9 +28,8 @@ const ATTENDEES_KEY = 'attendance-attendees';
 const RECORDS_KEY = 'attendance-records';
 const USER_KEY = 'attendance-user';
 
-// Default credentials (in production, use proper authentication)
-const DEFAULT_USERNAME = 'admin';
-const DEFAULT_PASSWORD = 'admin123';
+// Default PIN for offline mode
+const DEFAULT_PINS = ['1234'];
 
 function loadFromStorage<T>(key: string): T[] {
   try {
@@ -61,12 +62,43 @@ function getSampleAttendees(): Attendee[] {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(loadUser);
+  const [validPins, setValidPins] = useState<string[]>(DEFAULT_PINS);
+  const [loadingPins, setLoadingPins] = useState(false);
+  const [pinsError, setPinsError] = useState(false);
   const [attendees, setAttendees] = useState<Attendee[]>(() => {
     const stored = loadFromStorage<Attendee>(ATTENDEES_KEY);
     return stored.length > 0 ? stored : getSampleAttendees();
   });
   const [records, setRecords] = useState<AttendanceRecord[]>(() => loadFromStorage(RECORDS_KEY));
   const [synced, setSynced] = useState(false);
+
+  // Fetch PINs from Google Sheets on mount
+  useEffect(() => {
+    async function fetchPins() {
+      if (!isGoogleSheetsConfigured()) {
+        setPinsError(true);
+        return;
+      }
+
+      setLoadingPins(true);
+      setPinsError(false);
+
+      try {
+        const result = await getActivePins();
+        if (result.success && result.pins && result.pins.length > 0) {
+          setValidPins(result.pins);
+        } else {
+          setPinsError(true);
+        }
+      } catch {
+        setPinsError(true);
+      } finally {
+        setLoadingPins(false);
+      }
+    }
+
+    fetchPins();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(ATTENDEES_KEY, JSON.stringify(attendees));
@@ -84,13 +116,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const login = useCallback((username: string, password: string): boolean => {
-    if (username === DEFAULT_USERNAME && password === DEFAULT_PASSWORD) {
-      setUser({ username, isLoggedIn: true });
+  const login = useCallback((pin: string): boolean => {
+    const isValid = validPins.includes(pin);
+    if (isValid) {
+      setUser({ username: 'Admin', isLoggedIn: true });
       return true;
     }
     return false;
-  }, []);
+  }, [validPins]);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -203,6 +236,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         user,
         login,
         logout,
+        loadingPins,
+        pinsError,
         attendees,
         records,
         synced,

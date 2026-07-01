@@ -43,8 +43,8 @@ export default function Dashboard() {
       label: 'Total Records',
       value: records.length,
       icon: TrendingUp,
-      gradient: 'from-violet-500 to-purple-500',
-      shadow: 'shadow-violet-200 dark:shadow-violet-950/30',
+      gradient: 'from-rose-800 to-red-900',
+      shadow: 'shadow-rose-300 dark:shadow-rose-950/30',
     },
   ];
 

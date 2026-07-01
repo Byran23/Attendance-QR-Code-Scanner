@@ -11,10 +11,15 @@ interface PendingScan {
   actionType: 'check-in' | 'check-out';
 }
 
-export default function QRScanner() {
+interface QRScannerProps {
+  autoStart?: boolean;
+}
+
+export default function QRScanner({ autoStart = false }: QRScannerProps) {
   const { getAttendeeById, addRecord, getAttendeeLastAction } = useData();
 
   const [isScanning, setIsScanning] = useState(false);
+  const autoStarted = useRef(false);
   const [pendingScan, setPendingScan] = useState<PendingScan | null>(null);
   const [scanFeedback, setScanFeedback] = useState<{ type: 'success' | 'error' | 'warning'; message: string; detail?: string; record?: AttendanceRecord } | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -124,6 +129,18 @@ export default function QRScanner() {
       }
     };
   }, []);
+
+  // Auto-start camera when autoStart prop is true
+  useEffect(() => {
+    if (autoStart && !autoStarted.current && !isScanning && !cameraError) {
+      autoStarted.current = true;
+      // Small delay so the #qr-reader div is mounted
+      const timer = setTimeout(() => {
+        startScanner();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStart, isScanning, cameraError, startScanner]);
 
   return (
     <div className="space-y-4">

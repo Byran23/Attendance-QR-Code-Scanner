@@ -1,12 +1,32 @@
 @import "tailwindcss";
 
-/* Dark mode support */
+/* Tell Tailwind v4 to use the .dark class on <html> for dark: variants */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Dark mode color scheme */
 :root {
   color-scheme: light;
 }
 
 .dark {
   color-scheme: dark;
+}
+
+/* Base styles */
+html {
+  background-color: #f9fafb;
+}
+
+html.dark {
+  background-color: #0f172a;
+}
+
+body {
+  color: #111827;
+}
+
+.dark body {
+  color: #f1f5f9;
 }
 
 /* Custom scrollbar */
@@ -20,12 +40,20 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #d1d5db;
   border-radius: 3px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
   background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Animations */
@@ -86,13 +114,6 @@
 /* Better focus rings */
 *:focus-visible {
   outline: none;
-}
-
-/* Smooth transitions for theme changes */
-* {
-  transition-property: background-color, border-color, color;
-  transition-duration: 150ms;
-  transition-timing-function: ease;
 }
 
 /* Gradient text helper */
