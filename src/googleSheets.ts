@@ -1,6 +1,6 @@
 // Google Sheets API configuration
 // Set your deployed Google Apps Script web app URL here
-const GOOGLE_SHEETS_URL: string = '';
+const GOOGLE_SHEETS_URL: string = 'https://script.google.com/macros/s/AKfycbwgSUxc4VkP4fyl8jj454rOF6AfPxhdPXHC0mXxPZlntlAcqCMKquaS07e8B60Mkovwkg/exec';
 
 export function isGoogleSheetsConfigured(): boolean {
   return GOOGLE_SHEETS_URL.trim().length > 0;
