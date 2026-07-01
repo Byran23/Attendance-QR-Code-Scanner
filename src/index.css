@@ -1,90 +1,18 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
-
-/* Custom animations */
-@keyframes bounce-in {
-  0% {
-    opacity: 0;
-    transform: scale(0.9) translateY(-10px);
-  }
-  50% {
-    transform: scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
+/* Dark mode support */
+:root {
+  color-scheme: light;
 }
 
-@keyframes fade-in {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+.dark {
+  color-scheme: dark;
 }
 
-.animate-bounce-in {
-  animation: bounce-in 0.4s ease-out;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-/* Safe area for mobile bottom nav */
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/* QR Scanner styling overrides */
-#qr-reader {
-  border: none !important;
-}
-
-#qr-reader video {
-  border-radius: 12px;
-}
-
-#qr-reader__scan_region {
-  min-height: 300px;
-}
-
-#qr-reader__dashboard {
-  padding: 10px !important;
-}
-
-#qr-reader__dashboard_section {
-  padding: 5px !important;
-}
-
-#qr-reader__dashboard_section_swaplink {
-  color: #818cf8 !important;
-  text-decoration: none !important;
-  font-size: 14px !important;
-}
-
-#qr-reader__status_span {
-  display: none !important;
-}
-
-#qr-reader__header_message {
-  border: none !important;
-  font-size: 13px !important;
-  padding: 8px !important;
-}
-
-.dark #qr-reader__header_message {
-  color: #9ca3af !important;
-}
-
-.dark #qr-reader select,
-.dark #qr-reader span,
-.dark #qr-reader div {
-  color: #d1d5db !important;
-}
-
-/* Scrollbar styling */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -92,47 +20,85 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #cbd5e1;
   border-radius: 3px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #475569;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+@keyframes bounce-in {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
-/* Focus visible styles */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.3s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+/* Hide html5-qrcode default UI clutter */
+#qr-reader__dashboard_section_swaplink,
+#qr-reader__status_span,
+#qr-reader__header_message {
+  display: none !important;
+}
+
+#qr-reader video {
+  border-radius: 12px;
+}
+
+#qr-reader {
+  border: none !important;
+}
+
+/* Form elements dark mode fixes */
+.dark select option {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+/* Input date picker dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+/* Better focus rings */
 *:focus-visible {
-  outline: 2px solid #6366f1;
-  outline-offset: 2px;
-  border-radius: 4px;
+  outline: none;
 }
 
-/* Smooth transitions for all interactive elements */
-button, a, input, select {
-  transition: all 0.2s ease;
+/* Smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: ease;
 }
 
-/* Body background */
-body {
-  background-color: #f9fafb;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-.dark body,
-body:where(.dark) {
-  background-color: #0f172a;
-}
-
-html.dark {
-  background-color: #0f172a;
-  color-scheme: dark;
+/* Gradient text helper */
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

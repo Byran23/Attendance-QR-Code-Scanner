@@ -1,160 +1,227 @@
-import React from 'react';
-import { Users, UserCheck, UserX, Clock, QrCode, ArrowRight } from 'lucide-react';
-import { getAttendees, getTodayRecords } from '../db';
-import { Page } from '../types';
+import { useState } from 'react';
+import { LogIn, LogOut, Users, TrendingUp, Search, CheckCircle, UserCheck } from 'lucide-react';
+import { useData } from '../DataContext';
+import { getInitials, getInitialsBg } from '../utils/initials';
+import { Attendee } from '../types';
 
-interface DashboardProps {
-  onNavigate: (page: Page) => void;
-}
+export default function Dashboard() {
+  const { records, attendees, addRecord, getAttendeeLastAction, getTodayCheckIns } = useData();
+  const [search, setSearch] = useState('');
+  const [checkInSuccess, setCheckInSuccess] = useState<string | null>(null);
 
-export default function Dashboard({ onNavigate }: DashboardProps) {
-  const attendees = getAttendees();
-  const todayRecords = getTodayRecords();
+  const today = new Date().toDateString();
+  const todayRecords = records.filter(r => new Date(r.timestamp).toDateString() === today);
+  const todayCheckIns = todayRecords.filter(r => r.type === 'check-in').length;
+  const todayCheckOuts = todayRecords.filter(r => r.type === 'check-out').length;
+  const todayCheckInRecords = getTodayCheckIns();
+  const checkedInAttendeeIds = new Set(todayCheckInRecords.map(r => r.attendeeId));
+  const uniqueToday = checkedInAttendeeIds.size;
 
-  const checkedInToday = new Set(
-    todayRecords.filter(r => r.type === 'check-in').map(r => r.attendeeId)
-  );
+  const stats = [
+    {
+      label: "Today's Check-ins",
+      value: todayCheckIns,
+      icon: LogIn,
+      gradient: 'from-green-500 to-emerald-500',
+      shadow: 'shadow-green-200 dark:shadow-green-950/30',
+    },
+    {
+      label: "Today's Check-outs",
+      value: todayCheckOuts,
+      icon: LogOut,
+      gradient: 'from-orange-500 to-red-500',
+      shadow: 'shadow-orange-200 dark:shadow-orange-950/30',
+    },
+    {
+      label: 'Unique Attendees',
+      value: uniqueToday,
+      icon: Users,
+      gradient: 'from-blue-500 to-indigo-500',
+      shadow: 'shadow-blue-200 dark:shadow-blue-950/30',
+    },
+    {
+      label: 'Total Records',
+      value: records.length,
+      icon: TrendingUp,
+      gradient: 'from-violet-500 to-purple-500',
+      shadow: 'shadow-violet-200 dark:shadow-violet-950/30',
+    },
+  ];
 
-  // Currently present = last action is check-in
-  const presentIds = new Set<string>();
-  for (const id of checkedInToday) {
-    const lastAction = todayRecords.find(r => r.attendeeId === id);
-    if (lastAction && lastAction.type === 'check-in') {
-      presentIds.add(id);
-    }
-  }
+  // Search attendees for manual check-in
+  const filteredAttendees = search.trim()
+    ? attendees.filter(
+        a =>
+          a.name.toLowerCase().includes(search.toLowerCase()) ||
+          a.department.toLowerCase().includes(search.toLowerCase()) ||
+          a.position.toLowerCase().includes(search.toLowerCase()),
+      ).slice(0, 5)
+    : [];
 
+  const handleManualCheckIn = (attendee: Attendee) => {
+    const lastAction = getAttendeeLastAction(attendee.id);
+    const actionType = lastAction?.type === 'check-in' ? 'check-out' : 'check-in';
+    addRecord(attendee, actionType);
+    setCheckInSuccess(`${attendee.name} - ${actionType === 'check-in' ? 'Checked In' : 'Checked Out'}`);
+    setSearch('');
+    setTimeout(() => setCheckInSuccess(null), 3000);
+  };
+
+  // Progress bar calculation
   const totalAttendees = attendees.length;
-  const presentCount = presentIds.size;
-  const absentCount = totalAttendees - checkedInToday.size;
-  const totalScans = todayRecords.length;
-
-  const recentRecords = todayRecords.slice(0, 5);
-
-  const now = new Date();
-  const greeting = now.getHours() < 12 ? 'Good Morning' : now.getHours() < 17 ? 'Good Afternoon' : 'Good Evening';
-  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const progressPercent = totalAttendees > 0 ? Math.round((uniqueToday / totalAttendees) * 100) : 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-2xl p-6 text-white shadow-xl">
-        <h1 className="text-2xl font-bold">{greeting}! 👋</h1>
-        <p className="text-indigo-100 mt-1">{dateStr}</p>
-        <div className="mt-4 flex gap-3">
-          <button
-            onClick={() => onNavigate('scanner')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-all"
-          >
-            <QrCode size={18} />
-            Open Scanner
-          </button>
-          <button
-            onClick={() => onNavigate('attendees')}
-            className="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-all"
-          >
-            <Users size={18} />
-            View All
-          </button>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+        <p className="text-gray-500 dark:text-slate-400 text-sm">
+          Overview of today's attendance
+        </p>
       </div>
 
-      {/* Stats */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={<Users size={22} />}
-          label="Total Attendees"
-          value={totalAttendees}
-          lightColor="bg-blue-50 text-blue-600"
-          darkColor="dark:bg-blue-950 dark:text-blue-400"
-          iconBgLight="bg-blue-100"
-          iconBgDark="dark:bg-blue-900"
-        />
-        <StatCard
-          icon={<UserCheck size={22} />}
-          label="Present Today"
-          value={presentCount}
-          lightColor="bg-green-50 text-green-600"
-          darkColor="dark:bg-green-950 dark:text-green-400"
-          iconBgLight="bg-green-100"
-          iconBgDark="dark:bg-green-900"
-        />
-        <StatCard
-          icon={<UserX size={22} />}
-          label="Absent Today"
-          value={absentCount}
-          lightColor="bg-red-50 text-red-600"
-          darkColor="dark:bg-red-950 dark:text-red-400"
-          iconBgLight="bg-red-100"
-          iconBgDark="dark:bg-red-900"
-        />
-        <StatCard
-          icon={<QrCode size={22} />}
-          label="Total Scans"
-          value={totalScans}
-          lightColor="bg-purple-50 text-purple-600"
-          darkColor="dark:bg-purple-950 dark:text-purple-400"
-          iconBgLight="bg-purple-100"
-          iconBgDark="dark:bg-purple-900"
-        />
+        {stats.map(stat => (
+          <div
+            key={stat.label}
+            className={`bg-gradient-to-br ${stat.gradient} rounded-2xl p-5 text-white shadow-lg ${stat.shadow} transition-transform hover:scale-[1.02]`}
+          >
+            <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center mb-3">
+              <stat.icon size={20} />
+            </div>
+            <p className="text-3xl font-bold">{stat.value}</p>
+            <p className="text-sm text-white/80 mt-1">{stat.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Attendance Rate */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Today's Attendance Rate</h3>
-        <div className="relative w-full h-4 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
+      {/* Attendance Progress Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-slate-800">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-gray-800 dark:text-white flex items-center gap-2">
+            <UserCheck size={18} className="text-blue-500" />
+            Today's Attendance Progress
+          </h3>
+          <span className="text-sm font-medium text-gray-600 dark:text-slate-400">
+            {uniqueToday} / {totalAttendees} attendees
+          </span>
+        </div>
+        <div className="w-full h-4 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-1000"
-            style={{ width: `${totalAttendees > 0 ? (checkedInToday.size / totalAttendees) * 100 : 0}%` }}
+            className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <div className="flex justify-between mt-2 text-sm text-gray-500 dark:text-slate-400">
-          <span>{checkedInToday.size} checked in</span>
-          <span>{totalAttendees > 0 ? Math.round((checkedInToday.size / totalAttendees) * 100) : 0}%</span>
-        </div>
+        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2 text-right">
+          {progressPercent}% checked in today
+        </p>
       </div>
 
-      {/* Recent Activity */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-slate-800 transition-colors">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Recent Activity</h3>
-          <button
-            onClick={() => onNavigate('log')}
-            className="text-indigo-600 dark:text-indigo-400 text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all"
-          >
-            View All <ArrowRight size={14} />
-          </button>
+      {/* Manual Check-in */}
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-900 dark:to-slate-800 rounded-2xl p-5 border border-blue-100 dark:border-slate-700">
+        <h3 className="font-semibold text-gray-800 dark:text-white mb-3 flex items-center gap-2">
+          <LogIn size={18} className="text-blue-500" />
+          Manual Check-in
+        </h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">
+          Search and check-in an attendee without scanning QR code
+        </p>
+
+        {checkInSuccess && (
+          <div className="mb-3 p-3 bg-green-100 dark:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-xl flex items-center gap-2 animate-pulse">
+            <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
+            <span className="text-green-700 dark:text-green-400 text-sm font-medium">{checkInSuccess}</span>
+          </div>
+        )}
+
+        <div className="relative">
+          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search attendee by name, department..."
+            className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 transition-colors"
+          />
         </div>
-        {recentRecords.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 dark:text-slate-500">
-            <Clock size={40} className="mx-auto mb-3 opacity-50" />
-            <p className="font-medium">No activity yet today</p>
-            <p className="text-sm mt-1">Start scanning QR codes to record attendance</p>
+
+        {filteredAttendees.length > 0 && (
+          <div className="mt-3 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl divide-y divide-gray-50 dark:divide-slate-700 overflow-hidden shadow-lg">
+            {filteredAttendees.map(attendee => {
+              const lastAction = getAttendeeLastAction(attendee.id);
+              const nextAction = lastAction?.type === 'check-in' ? 'Check Out' : 'Check In';
+              const isCheckedIn = checkedInAttendeeIds.has(attendee.id);
+
+              return (
+                <button
+                  key={attendee.id}
+                  onClick={() => handleManualCheckIn(attendee)}
+                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors text-left"
+                >
+                  <div className={`w-10 h-10 rounded-full ${getInitialsBg(attendee.name)} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                    {getInitials(attendee.name)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-800 dark:text-white truncate">{attendee.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500 truncate">
+                      {attendee.department} · {attendee.position}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isCheckedIn && (
+                      <span className="text-[10px] bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                        Present
+                      </span>
+                    )}
+                    <span className={`text-xs font-medium px-3 py-1.5 rounded-lg ${
+                      nextAction === 'Check In'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-orange-500 text-white'
+                    }`}>
+                      {nextAction}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Today's Check-ins List */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 overflow-hidden shadow-sm">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 dark:text-white">Today's Checked-in Attendees</h3>
+          <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400 px-2.5 py-1 rounded-full font-medium">
+            {uniqueToday} present
+          </span>
+        </div>
+        {todayCheckInRecords.length === 0 ? (
+          <div className="px-5 py-12 text-center">
+            <Users size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-2" />
+            <p className="text-gray-400 dark:text-slate-500 text-sm">No check-ins yet today</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {recentRecords.map(record => (
-              <div key={record.id} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/50 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                  record.type === 'check-in'
-                    ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400'
-                    : 'bg-orange-100 dark:bg-orange-900/50 text-orange-600 dark:text-orange-400'
-                }`}>
-                  {record.type === 'check-in' ? '↓' : '↑'}
+          <div className="divide-y divide-gray-50 dark:divide-slate-800 max-h-80 overflow-y-auto">
+            {todayCheckInRecords.map(record => (
+              <div key={record.id} className="px-5 py-3 flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-full ${getInitialsBg(record.attendeeName)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+                  {getInitials(record.attendeeName)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-800 dark:text-white truncate">{record.attendeeName}</p>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">{record.attendeeDepartment}</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-white truncate">
+                    {record.attendeeName}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 truncate">
+                    {record.attendeeDepartment} · {record.attendeePosition}
+                  </p>
                 </div>
-                <div className="text-right">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                    record.type === 'check-in'
-                      ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400'
-                      : 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-400'
-                  }`}>
-                    {record.type === 'check-in' ? 'Check In' : 'Check Out'}
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] font-medium bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full">
+                    Present
                   </span>
-                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+                  <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">
                     {new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -163,26 +230,6 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function StatCard({ icon, label, value, lightColor, darkColor, iconBgLight, iconBgDark }: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-  lightColor: string;
-  darkColor: string;
-  iconBgLight: string;
-  iconBgDark: string;
-}) {
-  return (
-    <div className={`rounded-2xl p-4 shadow-sm transition-colors ${lightColor} ${darkColor}`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${iconBgLight} ${iconBgDark}`}>
-        {icon}
-      </div>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-sm opacity-75 mt-1">{label}</p>
     </div>
   );
 }

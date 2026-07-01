@@ -1,201 +1,229 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, ScanLine, ClipboardList, Menu, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, ScanLine, UserPlus, Moon, Sun, Menu, X, LogOut, ArrowLeft } from 'lucide-react';
+import { DataProvider, useData } from './DataContext';
 import Dashboard from './components/Dashboard';
-import AttendeeList from './components/AttendeeList';
-import AddEditAttendee from './components/AddEditAttendee';
-import QRScanner from './components/QRScanner';
-import QRCodeView from './components/QRCodeView';
 import AttendanceLog from './components/AttendanceLog';
-import { seedDemoData } from './db';
-import { Page, Attendee } from './types';
-import { useTheme } from './ThemeContext';
+import QRScanner from './components/QRScanner';
+import AddRecord from './components/AddRecord';
+import RegistrationForm from './components/RegistrationForm';
+import Login from './components/Login';
 
-const NAV_ITEMS = [
-  { id: 'dashboard' as Page, label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'attendees' as Page, label: 'Attendees', icon: Users },
-  { id: 'scanner' as Page, label: 'Scanner', icon: ScanLine },
-  { id: 'log' as Page, label: 'Log', icon: ClipboardList },
-];
+type Tab = 'dashboard' | 'scanner' | 'log' | 'add';
 
-export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [pageData, setPageData] = useState<Attendee | null>(null);
+function AppContent() {
+  const { user, logout } = useData();
+  const [tab, setTab] = useState<Tab>('dashboard');
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [dark, setDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved) return saved === 'dark';
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const { theme, toggleTheme, isDark } = useTheme();
 
-  void theme;
-
+  // Apply dark mode class
   useEffect(() => {
-    seedDemoData();
+    if (dark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
+  }, [dark]);
+
+  // Check URL for registration mode
+  useEffect(() => {
+    const checkRoute = () => {
+      const hash = window.location.hash;
+      const params = new URLSearchParams(window.location.search);
+      if (hash === '#register' || params.get('mode') === 'register') {
+        setShowRegistration(true);
+      } else {
+        setShowRegistration(false);
+      }
+    };
+
+    checkRoute();
+    window.addEventListener('hashchange', checkRoute);
+    return () => window.removeEventListener('hashchange', checkRoute);
   }, []);
 
-  const navigate = (page: Page, data?: Attendee | null) => {
-    setCurrentPage(page);
-    setPageData(data ?? null);
-    setMobileMenuOpen(false);
-    setRefreshKey(k => k + 1);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleBackToAdmin = () => {
+    window.location.hash = '';
   };
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard key={refreshKey} onNavigate={navigate} />;
-      case 'attendees':
-        return <AttendeeList key={refreshKey} onNavigate={navigate} />;
-      case 'add-attendee':
-        return <AddEditAttendee key={refreshKey} onNavigate={navigate} />;
-      case 'edit-attendee':
-        return <AddEditAttendee key={refreshKey} onNavigate={navigate} editData={pageData} />;
-      case 'scanner':
-        return <QRScanner key={refreshKey} />;
-      case 'qr-view':
-        return pageData ? (
-          <QRCodeView key={refreshKey} attendee={pageData} onNavigate={navigate} />
-        ) : (
-          <AttendeeList key={refreshKey} onNavigate={navigate} />
-        );
-      case 'log':
-        return <AttendanceLog key={refreshKey} />;
-      default:
-        return <Dashboard key={refreshKey} onNavigate={navigate} />;
-    }
+  const toggleDarkMode = () => {
+    setDark(prev => !prev);
   };
 
-  const getPageTitle = () => {
-    switch (currentPage) {
-      case 'dashboard': return 'Dashboard';
-      case 'attendees': return 'Attendees';
-      case 'add-attendee': return 'Add Attendee';
-      case 'edit-attendee': return 'Edit Attendee';
-      case 'scanner': return 'QR Scanner';
-      case 'qr-view': return 'QR Code';
-      case 'log': return 'Attendance Log';
-      default: return 'Dashboard';
-    }
-  };
+  const navItems: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'scanner', label: 'Scanner', icon: ScanLine },
+    { id: 'log', label: 'Log', icon: ClipboardList },
+    { id: 'add', label: 'Register', icon: UserPlus },
+  ];
+
+  // If in registration mode, show only the registration form
+  if (showRegistration) {
+    return (
+      <div className="relative">
+        <button
+          onClick={handleBackToAdmin}
+          className="fixed top-4 left-4 z-[60] bg-white dark:bg-slate-800 shadow-lg rounded-full p-2.5 text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-all border border-gray-100 dark:border-slate-700"
+          title="Back to Admin"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <RegistrationForm />
+      </div>
+    );
+  }
+
+  // Show login if not logged in
+  if (!user?.isLoggedIn) {
+    return <Login />;
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 transition-colors">
       {/* Top Bar */}
-      <header className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-50 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-gray-700 dark:text-gray-300"
-            >
-              {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <ScanLine size={20} className="text-white" />
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-gray-100 dark:border-slate-800 sticky top-0 z-50 transition-colors">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200 dark:shadow-blue-950/50">
+                <ClipboardList size={20} className="text-white" />
               </div>
               <div>
-                <h1 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">AttendEase</h1>
-                <p className="text-[10px] text-gray-400 dark:text-slate-500 leading-tight hidden sm:block">QR Attendance System</p>
+                <h1 className="text-lg font-bold text-gray-800 dark:text-white leading-tight">
+                  AttendEase
+                </h1>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 leading-tight -mt-0.5">
+                  Welcome, {user.username}
+                </p>
               </div>
             </div>
-          </div>
 
-          {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {NAV_ITEMS.map(item => {
-              const Icon = item.icon;
-              const isActive = currentPage === item.id || 
-                (item.id === 'attendees' && ['add-attendee', 'edit-attendee', 'qr-view'].includes(currentPage));
-              return (
+            {/* Desktop Nav */}
+            <nav className="hidden md:flex items-center gap-1">
+              {navItems.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => navigate(item.id)}
+                  onClick={() => setTab(item.id)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                    isActive
-                      ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400'
-                      : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-800 dark:hover:text-white'
+                    tab === item.id
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-200 dark:shadow-blue-950/50'
+                      : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                   }`}
                 >
-                  <Icon size={18} />
+                  <item.icon size={16} />
                   {item.label}
                 </button>
-              );
-            })}
-          </nav>
+              ))}
+            </nav>
 
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-yellow-400 transition-all duration-300"
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDark ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-gray-400 dark:text-slate-500">{getPageTitle()}</p>
-              <p className="text-xs text-gray-300 dark:text-slate-600">
-                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-              </p>
+            {/* Right actions */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleDarkMode}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
+                title={dark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {dark ? <Sun size={20} /> : <Moon size={20} />}
+              </button>
+              <button
+                onClick={logout}
+                className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 transition-all"
+              >
+                <LogOut size={16} />
+                Logout
+              </button>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
             </div>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden border-t border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg animate-fade-in">
-            <nav className="p-3 space-y-1">
-              {NAV_ITEMS.map(item => {
-                const Icon = item.icon;
-                const isActive = currentPage === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => navigate(item.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive
-                        ? 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-400'
-                        : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <Icon size={20} />
-                    {item.label}
-                  </button>
-                );
-              })}
-            </nav>
+          <div className="md:hidden border-t border-gray-100 dark:border-slate-800 px-4 py-2 bg-white dark:bg-slate-900">
+            {navItems.map(item => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setTab(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  tab === item.id
+                    ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white'
+                    : 'text-gray-500 dark:text-slate-400'
+                }`}
+              >
+                <item.icon size={16} />
+                {item.label}
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                logout();
+                setMobileMenuOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 dark:text-red-400 mt-2"
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
           </div>
         )}
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-6 pb-24 lg:pb-6">
-        {renderPage()}
+      {/* Content */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {tab === 'dashboard' && <Dashboard />}
+        {tab === 'scanner' && <QRScanner />}
+        {tab === 'log' && <AttendanceLog />}
+        {tab === 'add' && <AddRecord />}
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 z-50 safe-area-bottom transition-colors duration-300">
-        <div className="flex justify-around items-center py-2">
-          {NAV_ITEMS.map(item => {
-            const Icon = item.icon;
-            const isActive = currentPage === item.id ||
-              (item.id === 'attendees' && ['add-attendee', 'edit-attendee', 'qr-view'].includes(currentPage));
-            return (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id)}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
-                  isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-slate-600'
-                }`}
-              >
-                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                <span className={`text-[10px] font-medium ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-400 dark:text-slate-600'}`}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-gray-100 dark:border-slate-800 z-50 transition-colors">
+        <div className="flex items-center justify-around py-2">
+          {navItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-all ${
+                tab === item.id
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-gray-400 dark:text-slate-500'
+              }`}
+            >
+              <item.icon size={22} />
+              <span className="text-[10px] font-medium">{item.label}</span>
+            </button>
+          ))}
         </div>
       </nav>
+
+      {/* Bottom spacer for mobile nav */}
+      <div className="md:hidden h-20" />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <DataProvider>
+      <AppContent />
+    </DataProvider>
   );
 }

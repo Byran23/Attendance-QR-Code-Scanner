@@ -1,11 +1,15 @@
 export interface Attendee {
   id: string;
-  name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  name: string; // computed full name
   email: string;
   department: string;
-  role: string;
+  position: string;
   phone: string;
-  avatar: string;
+  gender: 'Male' | 'Female' | 'Other' | '';
+  address: string;
   createdAt: string;
 }
 
@@ -13,10 +17,13 @@ export interface AttendanceRecord {
   id: string;
   attendeeId: string;
   attendeeName: string;
-  attendeeEmail: string;
+  attendeePosition: string;
   attendeeDepartment: string;
-  timestamp: string;
   type: 'check-in' | 'check-out';
+  timestamp: string;
 }
 
-export type Page = 'dashboard' | 'attendees' | 'scanner' | 'log' | 'add-attendee' | 'edit-attendee' | 'qr-view';
+export interface User {
+  username: string;
+  isLoggedIn: boolean;
+}
